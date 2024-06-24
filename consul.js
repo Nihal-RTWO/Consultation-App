@@ -16,7 +16,6 @@ function saveCredentials(credentials) {
     fs.writeFileSync(credentialsFilePath, JSON.stringify(credentials, null, 2));
 }
 
-
 let doctorsCredentials = loadCredentials();
 
 function displayRegisteredDoctors() {
@@ -25,38 +24,44 @@ function displayRegisteredDoctors() {
     } else {
         console.log('Registered doctors:');
         doctorsCredentials.forEach((doctor, index) => {
-            console.log(`${index + 1}. ${doctor.username}`);
+            console.log(`${index + 1}. Username: ${doctor.username}`);
         });
     }
 }
 
-
 function registerNewDoctor() {
-    displayRegisteredDoctors();  
     const newUsername = prompt('Enter new doctor username: ');
     const newPassword = prompt('Enter new doctor password: ');
+    const firstName = prompt('Enter doctor first name: ');
+    const lastName = prompt('Enter doctor last name: ');
+    const email = prompt('Enter doctor email: ');
+    const contactNumber = prompt('Enter doctor contact number: ');
 
     const doctorExists = doctorsCredentials.some(doctor => doctor.username === newUsername);
     if (doctorExists) {
         console.log('Doctor username already exists. Please choose a different username.');
     } else {
-        doctorsCredentials.push({ username: newUsername, password: newPassword });
+        doctorsCredentials.push({ 
+            username: newUsername, 
+            password: newPassword,
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            contactNumber: contactNumber 
+        });
         saveCredentials(doctorsCredentials);
         console.log('New doctor registered successfully!');
-        displayRegisteredDoctors(); 
     }
 }
 
 function doctorLogin() {
-    displayRegisteredDoctors();  
     const username = prompt('Enter username: ');
     const password = prompt('Enter password: ');
 
     const doctor = doctorsCredentials.find(doc => doc.username === username && doc.password === password);
 
     if (doctor) {
-        console.log('Doctor Login successful! Welcome to the system.');
-        displayRegisteredDoctors();  
+        console.log(`Doctor Login successful! Welcome to the system.`);
     } else {
         console.log('Doctor Login failed! Invalid username or password.');
     }
@@ -75,7 +80,13 @@ function main() {
 
             if (username === correctAdminUsername && password === correctAdminPassword) {
                 console.log('Admin Login successful! Welcome to the system.');
-                displayRegisteredDoctors();  
+
+                const option = prompt('Press 1 to view list of doctors : ');
+                if (option === '1') {
+                    displayRegisteredDoctors();
+                } else {
+                    console.log('Returning to main menu.');
+                }
             } else {
                 console.log('Admin Login failed! Invalid username or password.');
             }
