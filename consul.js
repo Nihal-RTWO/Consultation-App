@@ -78,7 +78,7 @@ function doctorLogin() {
     const doctor = doctorsCredentials.find(doc => doc.username === username && doc.password === password);
 
     if (doctor) {
-        console.log(`Doctor Login successful! Welcome ${doctor.firstName} ${doctor.lastName}.`);
+        console.log(`Doctor Login successful! `);
         doctorMenu(doctor);
     } else {
         console.log('Doctor Login failed! Invalid username or password.');
@@ -140,7 +140,22 @@ function addPatientDetails(doctor) {
     console.log('Patient details added successfully!');
     console.log('Current list of patients:', doctor.patients);
 
-    saveCredentials(doctor.patients); 
+    saveCredentials(doctorsCredentials); 
+}
+
+function viewPatientDetails(doctor) {
+    if (!doctor.patients || doctor.patients.length === 0) {
+        console.log('No patients registered for this doctor yet.');
+    } else {
+        console.log('Patient Details:');
+        doctor.patients.forEach((patient, index) => {
+            console.log(`${index + 1}. Name: ${patient.name}`);
+            console.log(`   Date of Entry: ${patient.entryDate}`);
+            console.log(`   Time of Entry: ${patient.entryTime}`);
+            console.log(`   Disease: ${patient.disease}`);
+            console.log(`   Prescription: ${patient.prescription}`);
+        });
+    }
 }
 
 function adminLogin() {
