@@ -1,7 +1,7 @@
 import promptSync from 'prompt-sync';
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
 import retry from 'async-retry';
+
 
 const prompt = promptSync();
 
@@ -12,14 +12,14 @@ async function connectWithRetry() {
         await mongoose.connect(mongoURI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 30000, 
-            socketTimeoutMS: 45000 
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 45000
         });
     }, {
-        retries: 5, 
+        retries: 5,
         factor: 2,
         minTimeout: 1000,
-        maxTimeout: 10000 
+        maxTimeout: 10000
     });
 }
 
@@ -39,11 +39,10 @@ const doctorSchema = new mongoose.Schema({
 const Doctor = mongoose.model('Doctor', doctorSchema);
 
 const patientSchema = new mongoose.Schema({
-    patientId: { type: String, required: true, unique: true },
-    firstName: String,
-    lastName: String,
-    dateOfBirth: Date,
-    gender: String,
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    gender: { type: String, required: true },
+    prescription: { type: String, required: true },
     doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', required: true }
 });
 
@@ -82,25 +81,21 @@ async function registerNewDoctor() {
     const contactNumber = prompt('Enter doctor contact number: ');
 
     try {
-        const doctorExists = await Doctor.findOne({ username: newUsername }).exec();
-        if (doctorExists) {
-            console.log('Doctor username already exists. Please choose a different username.');
-        } else {
-            const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const hashedPassword = await (newPassword, 10);
+bcr
+        const newDoctor = new Doctor({
+            username: newUsername,
+            password: hashedPassword,
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            contactNumber: contactNumber
+        });
 
-            const newDoctor = new Doctor({
-                username: newUsername,
-                password: hashedPassword,
-                firstName: firstName,
-                lastName: lastName,
-                email: email,
-                contactNumber: contactNumber
-            });
-            await newDoctor.save();
-            console.log('New doctor registered successfully!');
-        }
+        await newDoctor.save();
+        console.log('New doctor registered successfully!');
     } catch (error) {
-        console.error('Error registering new doctor:', error);
+        console.error('Error registering new doctor:', error.message);
     }
 }
 
@@ -110,16 +105,17 @@ async function doctorLogin() {
 
     try {
         const doctor = await Doctor.findOne({ username: username });
-        if (doctor) {
-            const passwordMatch = await bcrypt.compare(password, doctor.password);
-            if (passwordMatch) {
-                console.log('Doctor Login successful!');
-                await doctorMenu(doctor);
-            } else {
-                console.log('Doctor Login failed! Invalid username or password.');
-            }
+        if (!doctor) {
+            console.log('Doctor Login failed! Invalid username.');
+            return;
+        }
+
+        const passwordMatch = await (password, doctor.password);
+        if (passwordMatch) {
+            console.log('Doctor Login successful!');
+            await doctorMenu(doctor);
         } else {
-            console.log('Doctor Login failed! Invalid username or password.');
+            console.log('Doctor Login failed! Invalid password.');
         }
     } catch (error) {
         console.error('Error during login:', error);
@@ -127,25 +123,28 @@ async function doctorLogin() {
 }
 
 async function addPatientDetails(doctor) {
-    const patientId = prompt('Enter patient ID: ');
     const firstName = prompt('Enter patient first name: ');
     const lastName = prompt('Enter patient last name: ');
-    const dateOfBirth = prompt('Enter patient date of birth (YYYY-MM-DD): ');
     const gender = prompt('Enter patient gender: ');
+    const prescription = prompt('Enter patient prescription: ');
 
     try {
         const newPatient = new Patient({
-            patientId: patientId,
             firstName: firstName,
             lastName: lastName,
-            dateOfBirth: new Date(dateOfBirth),
             gender: gender,
-            doctorId: doctor._id
+            prescription: prescription,
+            doctorId: doctor._id 
         });
+
         await newPatient.save();
         console.log('Patient details added successfully!');
     } catch (error) {
-        console.error('Error adding patient details:', error);
+        if (error.code === 11000) {
+            console.error('Duplicate key error:', error.message);
+        } else {
+            console.error('Error adding patient details:', error.message);
+        }
     }
 }
 
@@ -157,7 +156,7 @@ async function viewPatientDetails(doctor) {
         } else {
             console.log('Patient details:');
             patients.forEach((patient, index) => {
-                console.log(`${index + 1}. ID: ${patient.patientId}, Name: ${patient.firstName} ${patient.lastName}, Date of Birth: ${patient.dateOfBirth.toDateString()}, Gender: ${patient.gender}`);
+                console.log(`${index + 1}. Name: ${patient.firstName} ${patient.lastName}, Gender: ${patient.gender}, Prescription: ${patient.prescription}`);
             });
         }
     } catch (error) {
@@ -173,15 +172,18 @@ async function doctorMenu(doctor) {
 
         const option = prompt('Choose an option: ');
 
-        if (option === '1') {
-            await addPatientDetails(doctor);
-        } else if (option === '2') {
-            await viewPatientDetails(doctor);
-        } else if (option === '3') {
-            console.log('Logging out...');
-            break;
-        } else {
-            console.log('Invalid option. Please try again.');
+        switch (option) {
+            case '1':
+                await addPatientDetails(doctor);
+                break;
+            case '2':
+                await viewPatientDetails(doctor);
+                break;
+            case '3':
+                console.log('Logging out...');
+                return;
+            default:
+                console.log('Invalid option. Please try again.');
         }
     }
 }
@@ -190,33 +192,42 @@ async function adminLogin() {
     const username = prompt('Enter admin username: ');
     const password = prompt('Enter admin password: ');
 
-    const correctAdminUsername = "admin";
-    const correctAdminPassword = "admin@123";
+    const correctAdminUsername =  "admin";
+    const correctAdminPassword =  "admin@123";
 
     if (username === correctAdminUsername && password === correctAdminPassword) {
         console.log('Admin Login successful! Welcome to the system.');
-    } else {
+        const option = prompt('Press 1 to view list of doctors : ');
+            if (option === '1') {
+             await displayRegisteredDoctors();
+      } else {
         console.log('Admin Login failed! Invalid username or password.');
-    }
+    }}
 }
 
 async function main() {
     while (true) {
         console.log('\nPress 1 for Admin, 2 for Doctor, or 3 to Register a New Doctor (Press Q to quit): ');
-        const id = prompt('Your choice: ');
+        const choice = prompt('Your choice: ');
 
-        if (id === '1') {
-            await adminLogin();
-        } else if (id === '2') {
-            await doctorLogin();
-        } else if (id === '3') {
-            await registerNewDoctor();
-        } else if (id.toLowerCase() === 'q') {
-            console.log('Exiting system. Goodbye!');
-            mongoose.connection.close();
-            break;
-        } else {
-            console.log('Invalid selection! Please press 1 for Admin, 2 for Doctor, or 3 to Register a New Doctor.');
+        switch (choice) {
+            case '1':
+                await adminLogin();
+                break;
+            case '2':
+                await doctorLogin();
+                break;
+            case '3':
+                await registerNewDoctor();
+                break;
+            case 'q':
+            case 'Q':
+                console.log('Exiting system. Goodbye!');
+                mongoose.connection.close();
+                return;
+            default:
+                console.log('Invalid selection! Please press 1 for Admin, 2 for Doctor, or 3 to Register a New Doctor.');
+                break;
         }
     }
 }
