@@ -1,11 +1,11 @@
 import promptSync from 'prompt-sync';
 import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 import retry from 'async-retry';
-
 
 const prompt = promptSync();
 
-const mongoURI = 'mongodb://127.0.0.1:27017/yourDatabase';
+const mongoURI = 'mongodb://127.0.0.1:27017/ConsultationAppDB';
 
 async function connectWithRetry() {
     await retry(async () => {
@@ -43,6 +43,7 @@ const patientSchema = new mongoose.Schema({
     lastName: { type: String, required: true },
     gender: { type: String, required: true },
     prescription: { type: String, required: true },
+    sicknessDetails: { type: String, required: true }, 
     doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', required: true }
 });
 
@@ -81,8 +82,8 @@ async function registerNewDoctor() {
     const contactNumber = prompt('Enter doctor contact number: ');
 
     try {
-        const hashedPassword = await (newPassword, 10);
-bcr
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
         const newDoctor = new Doctor({
             username: newUsername,
             password: hashedPassword,
@@ -110,7 +111,7 @@ async function doctorLogin() {
             return;
         }
 
-        const passwordMatch = await (password, doctor.password);
+        const passwordMatch = await bcrypt.compare(password, doctor.password);
         if (passwordMatch) {
             console.log('Doctor Login successful!');
             await doctorMenu(doctor);
@@ -126,6 +127,8 @@ async function addPatientDetails(doctor) {
     const firstName = prompt('Enter patient first name: ');
     const lastName = prompt('Enter patient last name: ');
     const gender = prompt('Enter patient gender: ');
+    const sicknessDetails = prompt('Enter patient sickness details: '); 
+
     const prescription = prompt('Enter patient prescription: ');
 
     try {
@@ -133,6 +136,8 @@ async function addPatientDetails(doctor) {
             firstName: firstName,
             lastName: lastName,
             gender: gender,
+            sicknessDetails: sicknessDetails, 
+
             prescription: prescription,
             doctorId: doctor._id 
         });
@@ -150,13 +155,15 @@ async function addPatientDetails(doctor) {
 
 async function viewPatientDetails(doctor) {
     try {
-        const patients = await Patient.find({ doctorId: doctor._id });
+        const patients = await Patient.find({ doctorId: doctor._id }).populate('doctorId', 'firstName lastName');
+        
         if (patients.length === 0) {
             console.log('No patients found.');
         } else {
             console.log('Patient details:');
             patients.forEach((patient, index) => {
-                console.log(`${index + 1}. Name: ${patient.firstName} ${patient.lastName}, Gender: ${patient.gender}, Prescription: ${patient.prescription}`);
+                const doctorName = `${patient.doctorId.firstName} ${patient.doctorId.lastName}`; 
+                console.log(`${index + 1}. Name: ${patient.firstName} ${patient.lastName}, Gender: ${patient.gender}, Sickness Details: ${patient.sicknessDetails}, Prescription: ${patient.prescription}, Doctor: ${doctorName}`); 
             });
         }
     } catch (error) {
@@ -192,17 +199,20 @@ async function adminLogin() {
     const username = prompt('Enter admin username: ');
     const password = prompt('Enter admin password: ');
 
-    const correctAdminUsername =  "admin";
-    const correctAdminPassword =  "admin@123";
+    const correctAdminUsername = "admin";
+    const correctAdminPassword = "admin@123";
 
     if (username === correctAdminUsername && password === correctAdminPassword) {
         console.log('Admin Login successful! Welcome to the system.');
-        const option = prompt('Press 1 to view list of doctors : ');
-            if (option === '1') {
-             await displayRegisteredDoctors();
-      } else {
+        const option = prompt('Press 1 to view list of doctors: ');
+        if (option === '1') {
+            await displayRegisteredDoctors();
+        } else {
+            console.log('Invalid option.');
+        }
+    } else {
         console.log('Admin Login failed! Invalid username or password.');
-    }}
+    }
 }
 
 async function main() {
